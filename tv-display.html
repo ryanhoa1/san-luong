@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TV Display – Sản Lượng Chuyền Máy</title>
+<style>
+  :root {
+    --bg: #0A0F1E; --bg2: #0F1629; --bg3: #141C35;
+    --blue: #2D6BE4; --blue-glow: rgba(45,107,228,0.25);
+    --green: #00C875; --green-glow: rgba(0,200,117,0.2);
+    --orange: #FF8C00; --red: #FF3B3B; --gold: #FFD700;
+    --text: #E8EDF8; --text2: #8A9BBE;
+    --border: rgba(255,255,255,0.08); --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', Arial, sans-serif; display: flex; flex-direction: column; }
+
+  /* ── HEADER ── */
+  .tv-header { background: linear-gradient(90deg, #0B1323 0%, #111D3A 100%); border-bottom: 1px solid var(--border); padding: 0 40px; height: 70px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .logo-area { display: flex; align-items: center; gap: 16px; }
+  .logo-icon { width: 42px; height: 42px; background: var(--blue); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+  .company-name { font-size: 20px; font-weight: 800; letter-spacing: 1px; color: white; text-transform: uppercase; }
+  .company-sub { font-size: 11px; color: var(--text2); letter-spacing: 2px; text-transform: uppercase; }
+  .header-center { text-align: center; }
+  .header-title { font-size: 16px; font-weight: 700; color: #CBD5F0; letter-spacing: 1.5px; text-transform: uppercase; }
+  .header-date { font-size: 13px; color: var(--text2); margin-top: 2px; }
+  .header-right { text-align: right; }
+  .clock-big { font-size: 32px; font-weight: 800; letter-spacing: 2px; font-variant-numeric: tabular-nums; color: var(--gold); }
+  .live-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--green); font-weight: 700; letter-spacing: 1px; margin-top: 3px; }
+  .live-dot { width: 7px; height: 7px; background: var(--green); border-radius: 50%; animation: blink 1.2s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+  /* ── SLIDE CONTAINER ── */
+  .slide-container { flex: 1; overflow: hidden; position: relative; }
+  .slide { display: none; width: 100%; height: 100%; padding: 28px 40px 20px; flex-direction: column; gap: 16px; }
+  .slide.active { display: flex; }
+
+  /* SLIDE HEADER */
+  .slide-top { display: flex; align-items: center; justify-content: space-between; }
+  .slide-tag { background: var(--blue); color: white; font-size: 11px; font-weight: 800; padding: 5px 14px; border-radius: 20px; letter-spacing: 1px; text-transform: uppercase; }
+  .slide-chuyen-name { font-size: 34px; font-weight: 900; letter-spacing: -0.5px; color: white; }
+  .slide-product { font-size: 15px; color: var(--text2); margin-top: 2px; }
+  .slide-leader { font-size: 13px; color: #5A78B0; margin-top: 1px; }
+  .timer-ring { position: relative; width: 64px; height: 64px; flex-shrink: 0; }
+  .timer-ring svg { transform: rotate(-90deg); }
+  .timer-ring .timer-txt { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800; color: var(--gold); }
+
+  /* BIG NUMBER */
+  .big-numbers { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .num-card { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; text-align: center; }
+  .num-label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px; }
+  .num-value { font-size: 56px; font-weight: 900; line-height: 1; letter-spacing: -2px; }
+  .num-unit { font-size: 14px; color: var(--text2); margin-top: 6px; }
+  .num-blue .num-value { color: #5B9BFF; }
+  .num-green .num-value { color: var(--green); }
+
+  /* PROGRESS */
+  .progress-section { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 24px; }
+  .prog-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .prog-label { font-size: 12px; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; }
+  .prog-pct { font-size: 22px; font-weight: 800; }
+  .prog-bar-bg { background: rgba(255,255,255,0.08); border-radius: 20px; height: 22px; overflow: hidden; }
+  .prog-bar-fill { height: 100%; border-radius: 20px; transition: width 0.8s cubic-bezier(0.34,1.56,0.64,1); position: relative; }
+  .prog-bar-fill::after { content:''; position:absolute; top:0; left:0; right:0; bottom:0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent); animation: shimmer 2s infinite; }
+  @keyframes shimmer { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }
+
+  /* HOURLY MINI CHART */
+  .hourly-row { display: flex; gap: 8px; }
+  .hour-block { flex: 1; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 10px 8px; text-align: center; }
+  .hour-label { font-size: 10px; color: var(--text2); margin-bottom: 5px; }
+  .hour-bar-wrap { height: 50px; display: flex; align-items: flex-end; justify-content: center; margin-bottom: 4px; }
+  .hour-bar { width: 20px; border-radius: 4px 4px 0 0; transition: height 0.5s; }
+  .hour-val { font-size: 11px; font-weight: 700; }
+
+  /* BOTTOM STATUS BAR */
+  .status-bar { background: var(--bg2); border-top: 1px solid var(--border); padding: 10px 40px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .status-dots { display: flex; gap: 8px; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; cursor: pointer; transition: transform 0.2s; }
+  .status-dot.active { transform: scale(1.5); }
+  .status-next { font-size: 12px; color: var(--text2); }
+  .all-summary { display: flex; gap: 24px; }
+  .sum-item { text-align: center; }
+  .sum-val { font-size: 14px; font-weight: 700; color: white; }
+  .sum-lab { font-size: 10px; color: var(--text2); text-transform: uppercase; }
+
+  /* SLIDE TRANSITION */
+  @keyframes fadeSlideIn { from{opacity:0;transform:translateX(40px)} to{opacity:1;transform:translateX(0)} }
+  .slide.active { animation: fadeSlideIn 0.6s ease; }
+
+  /* STATUS LABEL */
+  .status-label { font-size: 22px; font-weight: 800; padding: 8px 20px; border-radius: 10px; }
+  .sl-green { background: rgba(0,200,117,0.15); color: var(--green); border: 1px solid rgba(0,200,117,0.3); }
+  .sl-orange { background: rgba(255,140,0,0.15); color: var(--orange); border: 1px solid rgba(255,140,0,0.3); }
+  .sl-red { background: rgba(255,59,59,0.15); color: var(--red); border: 1px solid rgba(255,59,59,0.3); }
+  .sl-gray { background: rgba(138,155,190,0.12); color: var(--text2); border: 1px solid var(--border); }
+
+  /* FIREBASE INPUT OVERLAY */
+  .fb-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 100; display: flex; align-items: center; justify-content: center; }
+  .fb-box { background: #111D3A; border: 1px solid rgba(255,255,255,0.12); border-radius: 16px; padding: 32px; max-width: 480px; width: 90%; }
+  .fb-title { font-size: 18px; font-weight: 700; color: white; margin-bottom: 8px; }
+  .fb-sub { font-size: 13px; color: var(--text2); margin-bottom: 24px; }
+  .fb-field { margin-bottom: 14px; }
+  .fb-field label { display: block; font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
+  .fb-field input { width: 100%; padding: 10px 14px; background: #0A0F1E; border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: white; font-size: 13px; font-family: monospace; }
+  .fb-field input:focus { outline: none; border-color: var(--blue); }
+  .fb-btns { display: flex; gap: 10px; margin-top: 20px; }
+  .fb-btn { flex: 1; padding: 11px; border-radius: 8px; border: none; cursor: pointer; font-size: 14px; font-weight: 700; }
+  .fb-btn-primary { background: var(--blue); color: white; }
+  .fb-btn-demo { background: rgba(255,255,255,0.08); color: var(--text); }
+</style>
+</head>
+<body>
+
+<div class="fb-overlay" id="fbOverlay">
+  <div class="fb-box">
+    <div class="fb-title">📺 TV Display – Cấu hình nguồn dữ liệu</div>
+    <div class="fb-sub">Nhập thông tin Firebase để TV tự động cập nhật theo thời gian thực. Hoặc dùng Demo.</div>
+    <div class="fb-field">
+      <label>Database URL</label>
+      <input id="tvFbUrl" placeholder="https://your-app-default-rtdb.firebaseio.com" />
+    </div>
+    <div class="fb-field">
+      <label>API Key</label>
+      <input id="tvFbKey" placeholder="AIzaSy..." />
+    </div>
+    <div class="fb-field">
+      <label>Auth Domain</label>
+      <input id="tvFbAuth" placeholder="your-app.firebaseapp.com" />
+    </div>
+    <div class="fb-btns">
+      <button class="fb-btn fb-btn-primary" onclick="connectFirebase()">🔌 Kết nối Firebase</button>
+      <button class="fb-btn fb-btn-demo" onclick="startDemo()">🎭 Dùng Demo</button>
+    </div>
+    <p id="fbStatus" style="margin-top:12px; font-size:12px; color:#FF8C00;"></p>
+  </div>
+</div>
+
+<div class="tv-header">
+  <div class="logo-area">
+    <div class="logo-icon">🏭</div>
+    <div>
+      <div class="company-name">JANICGARMENT SOLUTIONS</div>
+      <div class="company-sub">Production Efficiency System</div>
+    </div>
+  </div>
+  <div class="header-center">
+    <div class="header-title">BẢNG THEO DÕI SẢN LƯỢNG CHUYỀN MÁY</div>
+    <div class="header-date" id="tvDate">--</div>
+  </div>
+  <div class="header-right">
+    <div class="clock-big" id="tvClock">--:--:--</div>
+    <div class="live-badge"><span class="live-dot"></span> LIVE</div>
+  </div>
+</div>
+
+<div class="slide-container" id="slideContainer"></div>
+
+<div class="status-bar">
+  <div class="status-dots" id="statusDots"></div>
+  <div class="all-summary" id="allSummary"></div>
+  <div class="status-next" id="nextLabel">Chuyền tiếp theo trong <span id="countdown" style="color:var(--gold);font-weight:700;">--</span>s</div>
+</div>
+
+<script>
+const DEMO = {
+  date: new Date().toISOString().slice(0,10),
+  chuyen: [
+    { id:'c1', name:'Chuyền 1', product:'Áo sơ mi', leader:'Nguyễn Văn A', target:500, actual:472, pct:94, hourly:[58,62,55,60,59,57,61,60] },
+    { id:'c2', name:'Chuyền 2', product:'Quần tây', leader:'Trần Thị B', target:480, actual:391, pct:81, hourly:[55,50,49,52,48,45,50,42] },
+    { id:'c3', name:'Chuyền 3', product:'Áo khoác', leader:'Lê Văn C', target:420, actual:418, pct:99, hourly:[52,53,54,52,53,52,51,51] },
+    { id:'c4', name:'Chuyền 4', product:'Váy đầm', leader:'Phạm Thị D', target:460, actual:310, pct:67, hourly:[50,42,40,38,40,35,33,32] },
+    { id:'c5', name:'Chuyền 5', product:'Áo thun', leader:'Hoàng Văn E', target:550, actual:532, pct:97, hourly:[66,68,67,65,67,68,66,65] },
+    { id:'c6', name:'Chuyền 6', product:'Quần jeans', leader:'Vũ Thị F', target:400, actual:405, pct:101, hourly:[50,51,52,50,51,50,51,50] },
+  ],
+  summary: { totalActual: 2528, totalTarget: 2810, efficiency: 90 }
+};
+
+let currentData = null;
+let currentSlide = 0;
+let totalSlides = 6;
+const SLIDE_DURATION = 10;
+let countdown = SLIDE_DURATION;
+let countdownTimer = null;
+let autoTimer = null;
+let isFirebaseConnected = false;
+let dbRef = null;
+
+function updateClock() {
+  const now = new Date();
+  document.getElementById('tvClock').textContent = now.toLocaleTimeString('vi-VN', { hour12: false });
+  document.getElementById('tvDate').textContent = now.toLocaleDateString('vi-VN', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+function statusColor(p) {
+  if (p >= 90) return 'var(--green)'; if (p >= 70) return 'var(--orange)'; return 'var(--red)';
+}
+function statusClass(p) {
+  if (p >= 90) return 'sl-green'; if (p >= 70) return 'sl-orange'; if (p > 0) return 'sl-red'; return 'sl-gray';
+}
+function statusText(p) {
+  if (p >= 100) return '🏆 VƯỢT KH'; if (p >= 90) return '✅ ĐẠT KH'; if (p >= 70) return '⚠️ CẦN CỐ GẮNG'; if (p > 0) return '❌ CHƯA ĐẠT'; return '— CHƯA CẬP NHẬT';
+}
+
+function buildSlides(data) {
+  currentData = data;
+  totalSlides = data.chuyen.length;
+  const container = document.getElementById('slideContainer');
+  container.innerHTML = '';
+
+  data.chuyen.forEach((c, i) => {
+    const p = c.pct || Math.round((c.actual / c.target) * 100) || 0;
+    const color = statusColor(p);
+    const maxHourly = Math.max(...(c.hourly || [1]));
+
+    const hourlyHTML = (c.hourly || []).slice(0,8).map((v, hi) => {
+      const barH = Math.max(4, Math.round((v / maxHourly) * 44));
+      const ca = p >= 90 ? '#00C875' : p >= 70 ? '#FF8C00' : '#FF3B3B';
+      return `<div class="hour-block"><div class="hour-label">${6+hi}h</div><div class="hour-bar-wrap"><div class="hour-bar" style="height:${barH}px;background:${ca};"></div></div><div class="hour-val" style="color:${ca};">${v}</div></div>`;
+    }).join('');
+
+    const slide = document.createElement('div');
+    // Đã FIX lỗi giật slide: Giữ nguyên index hiện tại
+    slide.className = 'slide' + (i === currentSlide ? ' active' : '');
+    slide.id = `slide-${i}`;
+    slide.innerHTML = `
+      <div class="slide-top">
+        <div>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px;"><span class="slide-tag">Chuyền ${i+1} / ${totalSlides}</span></div>
+          <div class="slide-chuyen-name">${c.name}</div>
+          <div class="slide-product">📦 Sản phẩm: <b>${c.product}</b></div>
+          <div class="slide-leader">👤 Trưởng chuyền: ${c.leader || 'Chưa cập nhật'}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:16px;">
+          <div class="status-label ${statusClass(p)}">${statusText(p)}</div>
+          <div class="timer-ring">
+            <svg width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="5"/><circle id="timerCircle_${i}" cx="32" cy="32" r="26" fill="none" stroke="${color}" stroke-width="5" stroke-dasharray="163.36" stroke-dashoffset="0" stroke-linecap="round"/></svg>
+            <div class="timer-txt" id="timerTxt_${i}">${SLIDE_DURATION}</div>
+          </div>
+        </div>
+      </div>
+      <div class="big-numbers">
+        <div class="num-card num-blue"><div class="num-label">Sản lượng thực tế</div><div class="num-value">${c.actual.toLocaleString('vi-VN')}</div><div class="num-unit">sản phẩm</div></div>
+        <div class="num-card num-green"><div class="num-label">Kế hoạch ngày</div><div class="num-value">${c.target.toLocaleString('vi-VN')}</div><div class="num-unit">sản phẩm</div></div>
+        <div class="num-card num-eff"><div class="num-label">Hiệu suất</div><div class="num-value" style="color:${color};">${p}%</div><div class="num-unit">${c.actual >= c.target ? '+' + (c.actual - c.target) + ' vượt KH' : (c.target - c.actual) + ' còn lại'}</div></div>
+      </div>
+      <div class="progress-section">
+        <div class="prog-header"><span class="prog-label">Tiến độ hoàn thành kế hoạch</span><span class="prog-pct" style="color:${color};">${p}%</span></div>
+        <div class="prog-bar-bg"><div class="prog-bar-fill" style="width:${Math.min(p,100)}%;background:${color};"></div></div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Sản lượng theo giờ</div>
+        <div class="hourly-row">${hourlyHTML}</div>
+      </div>
+    `;
+    container.appendChild(slide);
+  });
+  buildStatusDots(data);
+  buildSummary(data);
+}
+
+function buildStatusDots(data) {
+  const dots = document.getElementById('statusDots');
+  dots.innerHTML = data.chuyen.map((c, i) => {
+    const p = c.pct || Math.round((c.actual/c.target)*100) || 0;
+    const col = statusColor(p);
+    // Đã FIX lỗi giật slide:
+    return `<div class="status-dot ${i===currentSlide?'active':''}" id="dot_${i}" style="background:${col}; box-shadow: 0 0 6px ${col};" onclick="goToSlide(${i})" title="${c.name}: ${p}%"></div>`;
+  }).join('');
+}
+
+function buildSummary(data) {
+  const sum = document.getElementById('allSummary');
+  const d = data.summary || {};
+  sum.innerHTML = `<div class="sum-item"><div class="sum-val" style="color:#5B9BFF;">${(d.totalActual||0).toLocaleString('vi-VN')}</div><div class="sum-lab">Tổng thực tế</div></div><div class="sum-item"><div class="sum-val">${(d.totalTarget||0).toLocaleString('vi-VN')}</div><div class="sum-lab">Tổng kế hoạch</div></div><div class="sum-item"><div class="sum-val" style="color:${statusColor(d.efficiency||0)};">${d.efficiency||0}%</div><div class="sum-lab">Hiệu suất chung</div></div>`;
+}
+
+function goToSlide(idx) {
+  const slides = document.querySelectorAll('.slide');
+  const dots = document.querySelectorAll('.status-dot');
+  slides.forEach((s, i) => s.classList.toggle('active', i === idx));
+  dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+  currentSlide = idx;
+  countdown = SLIDE_DURATION;
+}
+function nextSlide() { goToSlide((currentSlide + 1) % totalSlides); }
+function startAutoSlide() {
+  clearInterval(autoTimer); clearInterval(countdownTimer);
+  countdown = SLIDE_DURATION;
+  countdownTimer = setInterval(() => {
+    countdown--;
+    document.getElementById('countdown').textContent = countdown;
+    const circ = document.getElementById(`timerCircle_${currentSlide}`);
+    const txt = document.getElementById(`timerTxt_${currentSlide}`);
+    if (circ) { const frac = countdown / SLIDE_DURATION; circ.style.strokeDashoffset = 163.36 * (1 - frac); }
+    if (txt) txt.textContent = countdown;
+    if (countdown <= 0) {
+      nextSlide();
+      countdown = SLIDE_DURATION;
+      document.querySelectorAll('[id^="timerCircle_"]').forEach(c => c.style.strokeDashoffset = '0');
+      document.querySelectorAll('[id^="timerTxt_"]').forEach(t => t.textContent = SLIDE_DURATION);
+    }
+  }, 1000);
+}
+
+function connectFirebase() {
+  const url = document.getElementById('tvFbUrl').value.trim();
+  const key = document.getElementById('tvFbKey').value.trim();
+  const auth = document.getElementById('tvFbAuth').value.trim();
+  if (!url || !key) { document.getElementById('fbStatus').textContent = '❌ Vui lòng nhập Database URL và API Key'; return; }
+  document.getElementById('fbStatus').textContent = '⏳ Đang kết nối...';
+  const s1 = document.createElement('script');
+  s1.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js';
+  s1.onload = () => {
+    const s2 = document.createElement('script');
+    s2.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js';
+    s2.onload = () => {
+      try {
+        window.firebase.initializeApp({ apiKey:key, authDomain:auth, databaseURL:url });
+        const db = window.firebase.database();
+        isFirebaseConnected = true;
+
+        // Đã FIX timezone bug ở đây:
+        const dt = new Date();
+        const todayKey = `${dt.getFullYear()}${String(dt.getMonth()+1).padStart(2,'0')}${String(dt.getDate()).padStart(2,'0')}`;
+        dbRef = db.ref(`sanluong/${todayKey}`);
+
+        dbRef.on('value', snap => {
+          const val = snap.val();
+          if (val && val.chuyen) { buildSlides(val); } else { buildSlides(DEMO); }
+        });
+        document.getElementById('fbOverlay').style.display = 'none';
+        startAutoSlide();
+      } catch(e) { document.getElementById('fbStatus').textContent = '❌ Lỗi: ' + e.message; }
+    };
+    document.head.appendChild(s2);
+  };
+  document.head.appendChild(s1);
+}
+
+function startDemo() { buildSlides(DEMO); document.getElementById('fbOverlay').style.display = 'none'; startAutoSlide(); }
+
+window.addEventListener('load', () => {
+  const saved = localStorage.getItem('fb_config');
+  if (saved) {
+    const cfg = JSON.parse(saved);
+    if (document.getElementById('tvFbUrl')) document.getElementById('tvFbUrl').value = cfg.databaseURL || '';
+    if (document.getElementById('tvFbKey')) document.getElementById('tvFbKey').value = cfg.apiKey || '';
+    if (document.getElementById('tvFbAuth')) document.getElementById('tvFbAuth').value = cfg.authDomain || '';
+  }
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.getElementById('fbOverlay').style.display = 'flex';
+  if (e.key === 'ArrowRight') { nextSlide(); countdown = SLIDE_DURATION; }
+  if (e.key === 'ArrowLeft') { goToSlide((currentSlide - 1 + totalSlides) % totalSlides); countdown = SLIDE_DURATION; }
+});
+</script>
+</body>
+</html>
