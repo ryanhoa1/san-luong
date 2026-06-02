@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Nhập Sản Lượng – Janicgarment solutions</title>
+
+<!-- Tải trực tiếp thư viện Firebase SDK v9 (phiên bản tương thích với mã nguồn cũ) -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<style>
+  :root {
+    --blue: #1565C0; --blue-light: #E3F2FD; --blue-mid: #1976D2;
+    --green: #2E7D32; --green-light: #E8F5E9;
+    --orange: #E65100; --orange-light: #FFF3E0;
+    --red: #C62828; --red-light: #FFEBEE;
+    --gray-bg: #F5F7FA; --gray-border: #DDE3EA; --gray-text: #5F6B7A;
+    --white: #FFFFFF; --dark: #1A2332;
+    --radius: 10px; --shadow: 0 2px 8px rgba(0,0,0,0.10);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gray-bg); color: var(--dark); min-height: 100vh; }
+
+  /* HEADER */
+  .header { background: var(--blue); color: white; padding: 0 28px; display: flex; align-items: center; justify-content: space-between; height: 60px; box-shadow: 0 2px 8px rgba(0,0,0,0.18); }
+  .header-title { font-size: 17px; font-weight: 700; letter-spacing: 0.3px; }
+  .header-sub { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+  .header-right { display: flex; align-items: center; gap: 14px; font-size: 13px; }
+  .live-dot { width: 9px; height: 9px; background: #4CAF50; border-radius: 50%; display: inline-block; animation: pulse 1.4s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .clock { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  /* LAYOUT */
+  .main { max-width: 1200px; margin: 0 auto; padding: 24px 20px; }
+
+  /* DATE BAR */
+  .datebar { background: white; border-radius: var(--radius); border: 1px solid var(--gray-border); padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; box-shadow: var(--shadow); }
+  .datebar-label { font-size: 13px; color: var(--gray-text); }
+  .datebar-date { font-size: 16px; font-weight: 700; color: var(--blue); }
+  .datebar-right { display: flex; gap: 10px; align-items: center; }
+  .btn { padding: 8px 18px; border-radius: 7px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.15s; }
+  .btn-primary { background: var(--blue); color: white; }
+  .btn-primary:hover { background: var(--blue-mid); }
+  .btn-success { background: var(--green); color: white; }
+  .btn-success:hover { background: #1B5E20; }
+  .btn-outline { background: white; color: var(--blue); border: 1.5px solid var(--blue); }
+  .btn-outline:hover { background: var(--blue-light); }
+  .btn-sm { padding: 5px 12px; font-size: 12px; }
+
+  /* STATS ROW */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 22px; }
+  .stat-card { background: white; border-radius: var(--radius); border: 1px solid var(--gray-border); padding: 16px 18px; box-shadow: var(--shadow); }
+  .stat-label { font-size: 12px; color: var(--gray-text); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-value { font-size: 28px; font-weight: 700; }
+  .stat-sub { font-size: 12px; color: var(--gray-text); margin-top: 4px; }
+  .stat-blue .stat-value { color: var(--blue); }
+  .stat-green .stat-value { color: var(--green); }
+  .stat-orange .stat-value { color: var(--orange); }
+  .stat-red .stat-value { color: var(--red); }
+
+  /* TABLE SECTION */
+  .section { background: white; border-radius: var(--radius); border: 1px solid var(--gray-border); box-shadow: var(--shadow); overflow: hidden; margin-bottom: 22px; }
+  .section-header { background: var(--blue); color: white; padding: 13px 20px; display: flex; align-items: center; justify-content: space-between; }
+  .section-title { font-size: 14px; font-weight: 700; letter-spacing: 0.3px; }
+
+  /* TABLE */
+  table { width: 100%; border-collapse: collapse; }
+  thead tr { background: #EEF3FA; }
+  th { padding: 11px 14px; font-size: 12px; font-weight: 700; color: var(--gray-text); text-align: left; border-bottom: 1.5px solid var(--gray-border); text-transform: uppercase; letter-spacing: 0.4px; }
+  td { padding: 10px 14px; font-size: 13px; border-bottom: 1px solid #F0F3F7; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #F8FAFC; }
+  .chuyen-name { font-weight: 700; color: var(--dark); font-size: 14px; }
+  .chuyen-id { font-size: 11px; color: var(--gray-text); font-weight: 400; }
+
+  /* INPUT CELL */
+  .input-wrap { display: flex; gap: 6px; align-items: center; }
+  .qty-input { width: 90px; padding: 7px 10px; border: 1.5px solid var(--gray-border); border-radius: 6px; font-size: 14px; font-weight: 600; color: var(--dark); text-align: center; transition: border 0.15s; }
+  .qty-input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(21,101,192,0.12); }
+  .qty-input.updated { border-color: var(--green); background: var(--green-light); }
+
+  /* TARGET / PROGRESS */
+  .target-input { width: 80px; padding: 6px 8px; border: 1.5px solid var(--gray-border); border-radius: 6px; font-size: 13px; text-align: center; color: var(--gray-text); }
+  .target-input:focus { outline: none; border-color: var(--orange); }
+  .progress-bar-wrap { width: 110px; }
+  .progress-bar-bg { background: #E8EDF3; border-radius: 20px; height: 8px; overflow: hidden; }
+  .progress-bar-fill { height: 100%; border-radius: 20px; transition: width 0.4s; }
+  .progress-pct { font-size: 12px; font-weight: 700; margin-top: 3px; }
+
+  /* STATUS BADGE */
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: 0.3px; }
+  .badge-green { background: var(--green-light); color: var(--green); }
+  .badge-orange { background: var(--orange-light); color: var(--orange); }
+  .badge-red { background: var(--red-light); color: var(--red); }
+  .badge-gray { background: #EEF3FA; color: var(--gray-text); }
+
+  /* TOAST */
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--green); color: white; padding: 13px 22px; border-radius: 10px; font-size: 14px; font-weight: 600; box-shadow: 0 4px 16px rgba(0,0,0,0.18); z-index: 9999; opacity: 0; transform: translateY(20px); transition: all 0.3s; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.error { background: var(--red); }
+
+  /* MODAL */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: white; border-radius: 14px; padding: 28px; max-width: 480px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.22); }
+  .modal-title { font-size: 16px; font-weight: 700; margin-bottom: 18px; color: var(--dark); }
+  .modal-row { display: flex; gap: 10px; align-items: center; margin-bottom: 13px; }
+  .modal-label { font-size: 13px; color: var(--gray-text); width: 100px; flex-shrink: 0; }
+  .modal-input { flex: 1; padding: 8px 12px; border: 1.5px solid var(--gray-border); border-radius: 7px; font-size: 14px; }
+  .modal-input:focus { outline: none; border-color: var(--blue); }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+  /* FIREBASE CONFIG */
+  .config-panel { background: #FFF8E1; border: 1.5px solid #FFE082; border-radius: 10px; padding: 16px 20px; margin-bottom: 22px; }
+  .config-title { font-size: 13px; font-weight: 700; color: #E65100; margin-bottom: 10px; display: flex; align-items: center; gap: 7px; }
+  .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .config-field { display: flex; flex-direction: column; gap: 4px; }
+  .config-field label { font-size: 11px; color: var(--gray-text); font-weight: 600; text-transform: uppercase; }
+  .config-field input { padding: 7px 10px; border: 1.5px solid var(--gray-border); border-radius: 6px; font-size: 12px; font-family: monospace; }
+  .config-field input:focus { outline: none; border-color: var(--blue); }
+
+  /* RESPONSIVE */
+  @media (max-width: 768px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .config-grid { grid-template-columns: 1fr; }
+    .progress-bar-wrap { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header-title">📊 DASHBOARD NHẬP SẢN LƯỢNG CHUYỀN MÁY</div>
+    <div class="header-sub">Janicgarment solutions – Production Efficiency System</div>
+  </div>
+  <div class="header-right">
+    <span class="live-dot"></span>
+    <span>Live</span>
+    <span class="clock" id="clockDisplay">--:--:--</span>
+  </div>
+</div>
+
+<div class="main">
+  <!-- FIREBASE CONFIG -->
+  <div class="config-panel" id="configPanel">
+    <div class="config-title">⚙️ Cấu hình Firebase Database (nhập 1 lần, sau đó ẩn)</div>
+    <div class="config-grid">
+      <div class="config-field">
+        <label>API Key</label>
+        <input id="fbApiKey" placeholder="AIzaSy..." />
+      </div>
+      <div class="config-field">
+        <label>Auth Domain</label>
+        <input id="fbAuthDomain" placeholder="your-app.firebaseapp.com" />
+      </div>
+      <div class="config-field">
+        <label>Database URL</label>
+        <input id="fbDbUrl" placeholder="https://your-app-default-rtdb.firebaseio.com" />
+      </div>
+      <div class="config-field">
+        <label>Project ID</label>
+        <input id="fbProjectId" placeholder="your-app-id" />
+      </div>
+    </div>
+    <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+      <button class="btn btn-primary btn-sm" onclick="saveConfig()">💾 Lưu cấu hình & Kết nối</button>
+      <button class="btn btn-outline btn-sm" onclick="loadDemoData()">🎭 Dùng Demo (không Firebase)</button>
+      <span id="configStatus" style="font-size:12px; margin-top:2px; align-self:center;"></span>
+    </div>
+  </div>
+
+  <!-- DATE BAR -->
+  <div class="datebar">
+    <div>
+      <div class="datebar-label">Ngày sản xuất</div>
+      <div class="datebar-date" id="displayDate">--</div>
+    </div>
+    <div class="datebar-right">
+      <input type="date" id="selectedDate" class="target-input" style="width:150px; font-size:14px;" />
+      <button class="btn btn-outline" onclick="loadDataForDate()">📂 Tải dữ liệu</button>
+      <button class="btn btn-success" onclick="saveAllToFirebase()">💾 Lưu tất cả</button>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats">
+    <div class="stat-card stat-blue">
+      <div class="stat-label">Tổng sản lượng hôm nay</div>
+      <div class="stat-value" id="statTotal">0</div>
+      <div class="stat-sub">tất cả chuyền cộng lại</div>
+    </div>
+    <div class="stat-card stat-green">
+      <div class="stat-label">Chuyền đạt mục tiêu</div>
+      <div class="stat-value" id="statOK">0 / 6</div>
+      <div class="stat-sub">chuyền ≥ 90% kế hoạch</div>
+    </div>
+    <div class="stat-card stat-orange">
+      <div class="stat-label">Tổng kế hoạch ngày</div>
+      <div class="stat-value" id="statTarget">0</div>
+      <div class="stat-sub">tổng kế hoạch 6 chuyền</div>
+    </div>
+    <div class="stat-card stat-red">
+      <div class="stat-label">% Hiệu suất tổng</div>
+      <div class="stat-value" id="statEff">0%</div>
+      <div class="stat-sub">thực tế / kế hoạch</div>
+    </div>
+  </div>
+
+  <!-- MAIN TABLE -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">📋 CẬP NHẬT SẢN LƯỢNG CÁC CHUYỀN – HÔM NAY</span>
+      <span id="lastSaveTime" style="font-size:12px; opacity:0.8;">Chưa lưu</span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:44px">#</th>
+          <th>Tên chuyền</th>
+          <th>Sản phẩm</th>
+          <th>KH ngày</th>
+          <th>SL thực tế</th>
+          <th>Tiến độ</th>
+          <th>% ĐẠT</th>
+          <th>Trạng thái</th>
+          <th style="width:80px">Thao tác</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">📆 LỊCH SỬ SẢN LƯỢNG (7 NGÀY GẦN NHẤT)</span>
+      <button class="btn btn-outline btn-sm" style="color:white;border-color:rgba(255,255,255,0.5);" onclick="loadHistory()">🔄 Tải lại</button>
+    </div>
+    <div id="historyContent" style="padding:14px 20px; font-size:13px; color:var(--gray-text);">
+      Nhấn "Tải lại" để xem lịch sử...
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- MODAL EDIT CHUYEN -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">Chỉnh sửa thông tin chuyền</div>
+    <div class="modal-row">
+      <span class="modal-label">Tên chuyền</span>
+      <input class="modal-input" id="modalChuyenName" placeholder="VD: Chuyền 1" />
+    </div>
+    <div class="modal-row">
+      <span class="modal-label">Sản phẩm</span>
+      <input class="modal-input" id="modalProduct" placeholder="VD: Áo sơ mi nam" />
+    </div>
+    <div class="modal-row">
+      <span class="modal-label">Trưởng chuyền</span>
+      <input class="modal-input" id="modalLeader" placeholder="Họ tên trưởng chuyền" />
+    </div>
+    <div class="modal-row">
+      <span class="modal-label">Kế hoạch ngày</span>
+      <input class="modal-input" id="modalTarget" type="number" placeholder="VD: 500" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal()">Hủy</button>
+      <button class="btn btn-primary" onclick="saveModal()">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const CHUYEN_DEFAULT = [
+  { id: 'c1', name: 'Chuyền 1', product: 'Áo sơ mi', leader: 'Nguyễn Văn A', target: 500, actual: 0 },
+  { id: 'c2', name: 'Chuyền 2', product: 'Quần tây',  leader: 'Trần Thị B',   target: 480, actual: 0 },
+  { id: 'c3', name: 'Chuyền 3', product: 'Áo khoác', leader: 'Lê Văn C',     target: 420, actual: 0 },
+  { id: 'c4', name: 'Chuyền 4', product: 'Váy đầm',  leader: 'Phạm Thị D',   target: 460, actual: 0 },
+  { id: 'c5', name: 'Chuyền 5', product: 'Áo thun',  leader: 'Hoàng Văn E',  target: 550, actual: 0 },
+  { id: 'c6', name: 'Chuyền 6', product: 'Quần jeans',leader: 'Vũ Thị F',    target: 400, actual: 0 },
+];
+
+let chuyenData = JSON.parse(JSON.stringify(CHUYEN_DEFAULT));
+let editingIdx = -1;
+let db = null;
+let isFirebaseConnected = false;
+
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clockDisplay').textContent =
+    now.toLocaleTimeString('vi-VN', { hour12: false });
+  const dateStr = now.toLocaleDateString('vi-VN', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  document.getElementById('displayDate').textContent = dateStr;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+const d = new Date();
+const todayStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+document.getElementById('selectedDate').value = todayStr;
+
+function pct(actual, target) {
+  if (!target) return 0;
+  return Math.round((actual / target) * 100);
+}
+function statusBadge(p) {
+  if (p >= 90) return '<span class="badge badge-green">✅ Đạt</span>';
+  if (p >= 70) return '<span class="badge badge-orange">⚠️ Cần theo dõi</span>';
+  if (p > 0)   return '<span class="badge badge-red">❌ Chưa đạt</span>';
+  return '<span class="badge badge-gray">— Chưa nhập</span>';
+}
+function progressColor(p) {
+  if (p >= 90) return '#2E7D32';
+  if (p >= 70) return '#E65100';
+  return '#C62828';
+}
+
+function renderTable() {
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = chuyenData.map((c, i) => {
+    const p = pct(c.actual, c.target);
+    return `<tr>
+      <td style="color:var(--gray-text);font-weight:700;">${i+1}</td>
+      <td>
+        <div class="chuyen-name">${c.name}</div>
+        <div class="chuyen-id">${c.leader || ''}</div>
+      </td>
+      <td style="font-size:13px;">${c.product}</td>
+      <td>
+        <input class="target-input" type="number" value="${c.target}"
+          onchange="updateTarget(${i}, this.value)" style="width:80px;" />
+      </td>
+      <td>
+        <div class="input-wrap">
+          <input class="qty-input" id="input_${i}" type="number" value="${c.actual}"
+            min="0" placeholder="0"
+            oninput="updateActual(${i}, this.value)"
+            onfocus="this.select()" />
+        </div>
+      </td>
+      <td>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" style="width:${Math.min(p,100)}%;background:${progressColor(p)};"></div>
+          </div>
+          <div class="progress-pct" style="color:${progressColor(p)};">${p}%</div>
+        </div>
+      </td>
+      <td style="font-weight:700;font-size:15px;color:${progressColor(p)};">${p}%</td>
+      <td>${statusBadge(p)}</td>
+      <td>
+        <button class="btn btn-outline btn-sm" onclick="openModal(${i})" title="Chỉnh sửa">✏️</button>
+      </td>
+    </tr>`;
+  }).join('');
+  updateStats();
+}
+
+function updateActual(idx, val) {
+  chuyenData[idx].actual = parseInt(val) || 0;
+  const inp = document.getElementById(`input_${idx}`);
+  if (inp) inp.classList.add('updated');
+  renderTable();
+}
+function updateTarget(idx, val) {
+  chuyenData[idx].target = parseInt(val) || 0;
+  renderTable();
+}
+function updateStats() {
+  const total = chuyenData.reduce((s, c) => s + c.actual, 0);
+  const totalTarget = chuyenData.reduce((s, c) => s + c.target, 0);
+  const ok = chuyenData.filter(c => pct(c.actual, c.target) >= 90).length;
+  const eff = totalTarget ? Math.round((total / totalTarget) * 100) : 0;
+  document.getElementById('statTotal').textContent = total.toLocaleString('vi-VN');
+  document.getElementById('statOK').textContent = `${ok} / 6`;
+  document.getElementById('statTarget').textContent = totalTarget.toLocaleString('vi-VN');
+  document.getElementById('statEff').textContent = `${eff}%`;
+}
+
+function openModal(idx) {
+  editingIdx = idx;
+  const c = chuyenData[idx];
+  document.getElementById('modalTitle').textContent = `✏️ Chỉnh sửa: ${c.name}`;
+  document.getElementById('modalChuyenName').value = c.name;
+  document.getElementById('modalProduct').value = c.product;
+  document.getElementById('modalLeader').value = c.leader || '';
+  document.getElementById('modalTarget').value = c.target;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); }
+function saveModal() {
+  if (editingIdx < 0) return;
+  chuyenData[editingIdx].name = document.getElementById('modalChuyenName').value;
+  chuyenData[editingIdx].product = document.getElementById('modalProduct').value;
+  chuyenData[editingIdx].leader = document.getElementById('modalLeader').value;
+  chuyenData[editingIdx].target = parseInt(document.getElementById('modalTarget').value) || 0;
+  closeModal();
+  renderTable();
+  showToast('✅ Đã cập nhật thông tin chuyền!');
+}
+document.getElementById('modalOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+function saveConfig() {
+  const cfg = {
+    apiKey: document.getElementById('fbApiKey').value.trim(),
+    authDomain: document.getElementById('fbAuthDomain').value.trim(),
+    databaseURL: document.getElementById('fbDbUrl').value.trim(),
+    projectId: document.getElementById('fbProjectId').value.trim(),
+  };
+  if (!cfg.apiKey || !cfg.databaseURL) {
+    showToast('❌ Vui lòng nhập đủ API Key và Database URL!', true); return;
+  }
+  localStorage.setItem('fb_config', JSON.stringify(cfg));
+  initFirebase(cfg);
+}
+
+// Đã tối ưu hóa hàm kết nối Firebase, không tạo thẻ script động nữa
+function initFirebase(cfg) {
+  const status = document.getElementById('configStatus');
+  status.textContent = '⏳ Đang kết nối...'; 
+  status.style.color = '#E65100';
+
+  if (typeof window.firebase === 'undefined') {
+    status.textContent = '❌ Lỗi: Thư viện Firebase SDK chưa được load!';
+    status.style.color = '#C62828';
+    return;
+  }
+
+  try {
+    if (!window.firebase.apps.length) {
+      window.firebase.initializeApp(cfg);
+    }
+    db = window.firebase.database();
+    isFirebaseConnected = true;
+    
+    status.textContent = '✅ Đã kết nối Firebase!'; 
+    status.style.color = '#2E7D32';
+    showToast('✅ Firebase đã kết nối thành công!');
+    
+    document.getElementById('configPanel').style.border = '1.5px solid #A5D6A7';
+    document.getElementById('configPanel').style.background = '#F1F8E9';
+    
+    // Tự động load dữ liệu cho ngày hiện tại ngay khi kết nối thành công
+    loadDataForDate();
+  } catch(e) {
+    status.textContent = '❌ Lỗi: ' + e.message; 
+    status.style.color = '#C62828';
+  }
+}
+
+window.addEventListener('load', () => {
+  const saved = localStorage.getItem('fb_config');
+  if (saved) {
+    const cfg = JSON.parse(saved);
+    document.getElementById('fbApiKey').value = cfg.apiKey || '';
+    document.getElementById('fbAuthDomain').value = cfg.authDomain || '';
+    document.getElementById('fbDbUrl').value = cfg.databaseURL || '';
+    document.getElementById('fbProjectId').value = cfg.projectId || '';
+    
+    // Tự động gọi kết nối khi phát hiện có cấu hình cũ trong LocalStorage
+    initFirebase(cfg);
+  }
+  const savedChuyen = localStorage.getItem('chuyen_config');
+  if (savedChuyen) {
+    const parsed = JSON.parse(savedChuyen);
+    chuyenData = parsed.map((c, i) => ({ ...CHUYEN_DEFAULT[i], ...c, actual: 0 }));
+  }
+  renderTable();
+});
+
+function saveAllToFirebase() {
+  const dateKey = document.getElementById('selectedDate').value.replace(/-/g, '');
+  const payload = {
+    date: dateKey,
+    updatedAt: new Date().toISOString(),
+    chuyen: chuyenData.map(c => ({
+      id: c.id, name: c.name, product: c.product, leader: c.leader,
+      target: c.target, actual: c.actual, pct: pct(c.actual, c.target)
+    })),
+    summary: {
+      totalActual: chuyenData.reduce((s,c) => s+c.actual, 0),
+      totalTarget: chuyenData.reduce((s,c) => s+c.target, 0),
+      efficiency: chuyenData.reduce((s,c) => s+c.target,0)
+        ? Math.round(chuyenData.reduce((s,c)=>s+c.actual,0) / chuyenData.reduce((s,c)=>s+c.target,0) * 100) : 0,
+    }
+  };
+
+  localStorage.setItem('chuyen_config', JSON.stringify(chuyenData.map(c => ({
+    id: c.id, name: c.name, product: c.product, leader: c.leader, target: c.target
+  }))));
+
+  if (isFirebaseConnected && db) {
+    db.ref(`sanluong/${dateKey}`).set(payload)
+      .then(() => {
+        const now = new Date().toLocaleTimeString('vi-VN');
+        document.getElementById('lastSaveTime').textContent = `✅ Lưu lúc ${now}`;
+        showToast('✅ Đã lưu lên Firebase thành công!');
+      }).catch(e => showToast('❌ Lỗi Firebase: ' + e.message, true));
+  } else {
+    localStorage.setItem('sanluong_' + dateKey, JSON.stringify(payload));
+    const now = new Date().toLocaleTimeString('vi-VN');
+    document.getElementById('lastSaveTime').textContent = `💾 Lưu local lúc ${now}`;
+    showToast('💾 Đã lưu vào bộ nhớ trình duyệt (chưa có Firebase)');
+  }
+}
+
+function loadDataForDate() {
+  const dateKey = document.getElementById('selectedDate').value.replace(/-/g, '');
+  if (isFirebaseConnected && db) {
+    db.ref(`sanluong/${dateKey}`).once('value').then(snap => {
+      const val = snap.val();
+      if (val && val.chuyen) {
+        chuyenData = val.chuyen.map((c, i) => ({ ...CHUYEN_DEFAULT[i], ...c }));
+        renderTable(); showToast(`✅ Đã tải dữ liệu ngày ${document.getElementById('selectedDate').value}`);
+      } else { 
+        // Nếu không có dữ liệu trên Firebase cho ngày này, reset actual về 0
+        chuyenData = chuyenData.map(c => ({ ...c, actual: 0 }));
+        renderTable();
+        showToast('⚠️ Không có dữ liệu Firebase cho ngày này'); 
+      }
+    }).catch(e => showToast('❌ Lỗi tải dữ liệu: ' + e.message, true));
+  } else {
+    const saved = localStorage.getItem('sanluong_' + dateKey);
+    if (saved) {
+      chuyenData = JSON.parse(saved).chuyen.map((c, i) => ({ ...CHUYEN_DEFAULT[i], ...c }));
+      renderTable(); showToast(`✅ Đã tải dữ liệu local ngày ${document.getElementById('selectedDate').value}`);
+    } else { 
+      chuyenData = chuyenData.map(c => ({ ...c, actual: 0 }));
+      renderTable();
+      showToast('⚠️ Không có dữ liệu local cho ngày này'); 
+    }
+  }
+}
+
+function loadDemoData() {
+  chuyenData = [
+    { id:'c1', name:'Chuyền 1', product:'Áo sơ mi', leader:'Nguyễn Văn A', target:500, actual:472 },
+    { id:'c2', name:'Chuyền 2', product:'Quần tây', leader:'Trần Thị B',   target:480, actual:391 },
+    { id:'c3', name:'Chuyền 3', product:'Áo khoác', leader:'Lê Văn C',     target:420, actual:418 },
+    { id:'c4', name:'Chuyền 4', product:'Váy đầm',  leader:'Phạm Thị D',   target:460, actual:310 },
+    { id:'c5', name:'Chuyền 5', product:'Áo thun',  leader:'Hoàng Văn E',  target:550, actual:532 },
+    { id:'c6', name:'Chuyền 6', product:'Quần jeans',leader:'Vũ Thị F',    target:400, actual:405 },
+  ];
+  document.getElementById('configPanel').style.display = 'none';
+  renderTable(); showToast('🎭 Đã tải dữ liệu Demo!');
+}
+
+function loadHistory() {
+  let rows = [];
+  if (isFirebaseConnected && db) {
+    db.ref('sanluong').orderByKey().limitToLast(7).once('value').then(snap => {
+      const data = snap.val() || {};
+      rows = Object.entries(data).reverse().map(([dk, v]) => {
+        const d = `${dk.slice(0,4)}-${dk.slice(4,6)}-${dk.slice(6,8)}`;
+        return `<tr><td>${d}</td><td>${v.summary?.totalActual?.toLocaleString('vi-VN')||'-'}</td>
+          <td>${v.summary?.totalTarget?.toLocaleString('vi-VN')||'-'}</td>
+          <td style="font-weight:700;color:${v.summary?.efficiency>=90?'#2E7D32':v.summary?.efficiency>=70?'#E65100':'#C62828'}">${v.summary?.efficiency||0}%</td></tr>`;
+      }).join('');
+      renderHistoryTable(rows);
+    });
+  } else {
+    for (let i = 0; i < 7; i++) {
+      const dt = new Date(); dt.setDate(dt.getDate() - i);
+      const dk = dt.toISOString().slice(0,10).replace(/-/g,'');
+      const saved = localStorage.getItem('sanluong_' + dk);
+      if (saved) {
+        const v = JSON.parse(saved); const ds = `${dk.slice(0,4)}-${dk.slice(4,6)}-${dk.slice(6,8)}`;
+        rows.push(`<tr><td>${ds}</td><td>${v.summary?.totalActual?.toLocaleString('vi-VN')||'-'}</td>
+          <td>${v.summary?.totalTarget?.toLocaleString('vi-VN')||'-'}</td>
+          <td style="font-weight:700;">${v.summary?.efficiency||0}%</td></tr>`);
+      }
+    }
+    renderHistoryTable(rows.join(''));
+  }
+}
+
+function renderHistoryTable(rows) {
+  const hist = document.getElementById('historyContent');
+  if (!rows || rows.length === 0) { hist.innerHTML = '<p style="padding:8px 0; color:var(--gray-text)">Chưa có dữ liệu lịch sử.</p>'; return; }
+  hist.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px;">
+    <thead><tr style="background:#EEF3FA;">
+      <th style="padding:9px 14px;text-align:left;font-size:11px;color:var(--gray-text);text-transform:uppercase">Ngày</th>
+      <th style="padding:9px 14px;text-align:left;font-size:11px;color:var(--gray-text);text-transform:uppercase">Thực tế</th>
+      <th style="padding:9px 14px;text-align:left;font-size:11px;color:var(--gray-text);text-transform:uppercase">Kế hoạch</th>
+      <th style="padding:9px 14px;text-align:left;font-size:11px;color:var(--gray-text);text-transform:uppercase">Hiệu suất</th>
+    </tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function showToast(msg, isErr = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast show' + (isErr ? ' error' : '');
+  setTimeout(() => { t.className = 'toast'; }, 3200);
+}
+</script>
+</body>
+</html>
